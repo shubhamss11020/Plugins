@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "eoxs-intern": {
+      "command": "node",
+      "args": [
+        "scripts/bridge.js",
+        "https://thread-vault-db-testing.onrender.com/zStpO9S-zb3JtCPfb2ieZhN8wYxPRIPNJsAuInnt6mY/sse"
+      ]
+    }
+  }
+}

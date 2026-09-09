@@ -1,0 +1,6 @@
+{
+  "name": "eoxs-intern-plugin",
+  "displayName": "EOXS Intern Plugin",
+  "version": "1.0.0",
+  "description": "Authenticated intern MCP connector and skill for EOXS emails, calls, wiki, and implementation tasks."
+}

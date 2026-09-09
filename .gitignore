@@ -1,0 +1,14 @@
+# Secrets & Credentials
+.env
+.env.local
+token.json
+
+# Backups
+*.backup.*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node
+node_modules/

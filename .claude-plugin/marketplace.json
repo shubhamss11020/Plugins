@@ -1,0 +1,17 @@
+{
+  "name": "eoxs-marketplace",
+  "owner": {
+    "name": "EOXS"
+  },
+  "plugins": [
+    {
+      "name": "eoxs-intern",
+      "description": "Authenticated intern data connector for EOXS emails, calls, wiki, and implementation tasks.",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "EOXS"
+      }
+    }
+  ]
+}
