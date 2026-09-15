@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * AskCruz / EOXS Live MCP Bridge for Claude Desktop
- *
- * Remote Endpoint: https://mcp.askcruz.com/intern/mcp
- * Auth Header:     x-auth-token: <intern_token>
- *
- * This script bridges Claude Desktop stdio (JSON-RPC) to the remote MCP server.
- * All diagnostic logs are sent strictly to stderr to keep stdout clean for JSON-RPC.
+ * MCP Stdio-to-Remote Bridge for Raj's Suite
+ * 
+ * Configured for the 5 MCP servers:
+ *   1. threads-wiki ➔ https://mcp.askcruz.com/wiki/mcp (with token)
+ *   2. threads-ov   ➔ Direct SSE URL ending with /sse (NO AUTH HEADER)
+ *   3. ceo          ➔ https://mcp.askcruz.com/ceo/mcp (with token)
+ *   4. ask-cruz     ➔ https://mcp.askcruz.com/team/mcp (with token)
+ *   5. team-eoxs    ➔ https://mcp.askcruz.com/eoxs-team/mcp (with token)
+ * 
+ * Reads server definitions, custom headers, and tokens from config.json.
  */
 
 const http = require("http");
@@ -17,18 +20,13 @@ const path = require("path");
 const os = require("os");
 const readline = require("readline");
 
-const DEFAULT_REMOTE_URL = "https://thread-vault-db-testing.onrender.com/zStpO9S-zb3JtCPfb2ieZhN8wYxPRIPNJsAuInnt6mY/sse";
-const remoteUrl = process.argv.find(arg => arg.startsWith("http")) || process.env.EOXS_REMOTE_URL || DEFAULT_REMOTE_URL;
-const isCheckMode = process.argv.includes("--check") || process.argv.includes("--test");
-
-const CONFIG_DIR = path.join(os.homedir(), ".eoxs");
-const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
+// Paths
+const CONFIG_FILE = path.join(__dirname, "..", "config.json");
 const LOCAL_ENV_FILE = path.join(__dirname, "..", ".env");
+const USER_CONFIG_DIR = path.join(os.homedir(), ".eoxs");
+const USER_TOKEN_FILE = path.join(USER_CONFIG_DIR, "token.json");
 
-// OPTION 1: You can paste your token directly between the quotes below (if required by server):
-const DIRECT_TOKEN = ""; 
-
-// Auto-load .env file if present in Plugins folder
+// Auto-load .env
 if (fs.existsSync(LOCAL_ENV_FILE)) {
   try {
     const envLines = fs.readFileSync(LOCAL_ENV_FILE, "utf-8").split("\n");
@@ -45,45 +43,124 @@ if (fs.existsSync(LOCAL_ENV_FILE)) {
   } catch (e) {}
 }
 
-function log(...args) {
-  console.error("[AskCruz Bridge]", ...args);
+// Load config.json
+let localConfig = { servers: {} };
+if (fs.existsSync(CONFIG_FILE)) {
+  try {
+    localConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+  } catch (e) {
+    console.error("[Bridge Error] Failed to parse config.json:", e.message);
+  }
 }
 
-// 1. Retrieve the authentication token (optional if token is in the URL)
+// Parse CLI Arguments
+const args = process.argv.slice(2);
+let serverName = "ask-cruz";
+let cliUrl = args.find(a => a.startsWith("http"));
+let cliHeaderName = null;
+let cliToken = null;
+
+for (let i = 0; i < args.length; i++) {
+  if ((args[i] === "--name" || args[i] === "--server") && args[i + 1]) {
+    serverName = args[i + 1];
+  }
+  if (args[i] === "--header" && args[i + 1]) {
+    cliHeaderName = args[i + 1];
+  }
+  if (args[i] === "--token" && args[i + 1]) {
+    cliToken = args[i + 1];
+  }
+  if (args[i] === "--url" && args[i + 1]) {
+    cliUrl = args[i + 1];
+  }
+}
+
+const isCheckMode = args.includes("--check") || args.includes("--test");
+
+// Lookup server in config.json
+const serverDef = (localConfig.servers && localConfig.servers[serverName]) || {};
+
+const remoteUrl = cliUrl || serverDef.url || "https://mcp.askcruz.com/team/mcp";
+const headerName = cliHeaderName || serverDef.headerName || localConfig.defaultHeaderName || "x-auth-token";
+const isNoAuth = serverDef.noAuth === true || serverName === "threads-ov" || serverName === "team-eoxs" || serverName === "ask-cruz" || args.includes("--no-auth");
+
+function log(...args) {
+  console.error(`[Bridge:${serverName}]`, ...args);
+}
+
+// Resolve Token
 function getToken() {
-  if (DIRECT_TOKEN && DIRECT_TOKEN.trim().length > 0) {
-    log("Authentication: Using token pasted directly in bridge.js.");
-    return DIRECT_TOKEN.trim();
+  if (isNoAuth) {
+    log("Auth: Direct connection (no token / no auth header).");
+    return null;
   }
 
+  // 1. Direct CLI argument
+  if (cliToken) {
+    log("Auth: Using token provided via CLI argument.");
+    return cliToken.trim();
+  }
+
+  // 2. Server-specific token in config.json
+  if (serverDef.token && serverDef.token !== "YOUR_TOKEN_HERE") {
+    log("Auth: Using token configured for server in config.json.");
+    return serverDef.token.trim();
+  }
+
+  // 3. Default fallback token in config.json
+  if (localConfig.defaultToken && localConfig.defaultToken !== "YOUR_TOKEN_HERE") {
+    log("Auth: Using defaultToken from config.json.");
+    return localConfig.defaultToken.trim();
+  }
+
+  // 4. Server-specific environment variable
+  const envKey = serverName.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_TOKEN";
+  if (process.env[envKey]) {
+    log(`Auth: Using environment variable (${envKey}).`);
+    return process.env[envKey].trim();
+  }
+
+  // 5. Global environment variable
   if (process.env.ASKCRUZ_API_TOKEN || process.env.EOXS_API_TOKEN) {
     const token = (process.env.ASKCRUZ_API_TOKEN || process.env.EOXS_API_TOKEN).trim();
-    log("Authentication: Using token from environment / .env file.");
+    log("Auth: Using global environment variable token.");
     return token;
   }
 
-  if (fs.existsSync(TOKEN_FILE)) {
+  // 6. ~/.eoxs/token.json (only for servers that require auth)
+  if (fs.existsSync(USER_TOKEN_FILE)) {
     try {
-      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf-8"));
-      if (data && data.token) {
-        log(`Authentication: Using saved token from ${TOKEN_FILE}`);
+      const data = JSON.parse(fs.readFileSync(USER_TOKEN_FILE, "utf-8"));
+      if (data.tokens && data.tokens[serverName]) {
+        log(`Auth: Using token for "${serverName}" from ${USER_TOKEN_FILE}`);
+        return data.tokens[serverName].trim();
+      }
+      if (data[serverName]) {
+        log(`Auth: Using token for "${serverName}" from ${USER_TOKEN_FILE}`);
+        return data[serverName].trim();
+      }
+      if (data.token) {
+        log(`Auth: Using primary token from ${USER_TOKEN_FILE}`);
         return data.token.trim();
       }
     } catch (e) {}
   }
 
-  // If the remote URL already contains an embedded token / path, token header is optional
-  log("Authentication: URL-based auth detected or no token header provided.");
+  log("Auth: No token found. Please set your token in config.json, .env, or ~/.eoxs/token.json");
   return null;
 }
 
-// 2. Bridge Claude stdio to Remote MCP Endpoint
 function startBridge(token) {
   log(`Target Endpoint: ${remoteUrl}`);
-  if (token) {
-    log(`Auth Header: Attached x-auth-token (${token.slice(0, 6)}...)`);
+  if (isNoAuth) {
+    log(`Auth: Direct URL connection (no token / no auth header)`);
   } else {
-    log(`Auth: URL-based authentication`);
+    log(`Configured Header: "${headerName}"`);
+    if (token) {
+      log(`Token: ${token.slice(0, 6)}... (loaded)`);
+    } else {
+      log("Token: (none provided)");
+    }
   }
 
   const targetUrl = new URL(remoteUrl);
@@ -94,96 +171,91 @@ function startBridge(token) {
     "Content-Type": "application/json",
     "Accept": "application/json, text/event-stream"
   };
-  if (token) {
-    authHeaders["x-auth-token"] = token;
+  if (token && !isNoAuth) {
+    authHeaders[headerName] = token;
   }
 
   let postEndpointUrl = null;
+  const pendingQueue = [];
 
-  // Initial handshake / SSE connection
   const reqHeaders = {
     "Accept": "text/event-stream, application/json"
   };
-  if (token) {
-    reqHeaders["x-auth-token"] = token;
+  if (token && !isNoAuth) {
+    reqHeaders[headerName] = token;
   }
 
-  const checkReq = clientLib.request(targetUrl, {
+  // Initiate connection
+  const sseReq = clientLib.request(targetUrl, {
     method: "GET",
     headers: reqHeaders
   }, (res) => {
     if (res.statusCode === 401) {
-      log("❌ 401 Unauthorized: Server rejected the token. Please verify credentials.");
+      log(`❌ 401 Unauthorized: Server rejected token on header "${headerName}".`);
       process.exit(1);
     }
 
-    const contentType = res.headers["content-type"] || "";
-
     if (isCheckMode) {
-      log(`✅ Verification successful! Server responded with HTTP ${res.statusCode}.`);
-      process.exit(0);
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        log(`✅ Verification successful! Server responded with HTTP ${res.statusCode}.`);
+        process.exit(0);
+      } else {
+        log(`❌ Server returned HTTP ${res.statusCode}. Please verify endpoint URL or token.`);
+        process.exit(1);
+      }
     }
 
-    if (res.statusCode === 200 && contentType.includes("event-stream")) {
-      log("Connected via Server-Sent Events (SSE).");
+    let buffer = "";
+    let currentEvent = null;
 
-      let buffer = "";
-      res.on("data", (chunk) => {
-        buffer += chunk.toString("utf-8");
-        const lines = buffer.split("\n");
-        buffer = lines.pop();
+    res.on("data", (chunk) => {
+      buffer += chunk.toString("utf-8");
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
 
-        let currentEvent = null;
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            const data = line.slice(5).trim();
-            if (currentEvent === "endpoint") {
-              postEndpointUrl = new URL(data, remoteUrl).toString();
-              log(`MCP Message endpoint updated to: ${postEndpointUrl}`);
-            } else if (data) {
+      for (const line of lines) {
+        if (line.startsWith("event:")) {
+          currentEvent = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+          const data = line.slice(5).trim();
+          if (currentEvent === "endpoint" && !postEndpointUrl) {
+            postEndpointUrl = new URL(data, remoteUrl).toString();
+            log(`Endpoint ready: ${postEndpointUrl}`);
+
+            while (pendingQueue.length > 0) {
+              const queued = pendingQueue.shift();
+              dispatchPost(queued);
+            }
+          } else if (data) {
+            // Write only valid JSON-RPC to stdout for Claude Desktop
+            if (data.startsWith("{") || data.startsWith("[")) {
               process.stdout.write(data + "\n");
             }
           }
         }
-      });
+      }
+    });
 
-      res.on("end", () => {
-        log("SSE stream closed by server.");
-        process.exit(0);
-      });
-    } else {
-      log(`Server responded with HTTP ${res.statusCode}. Ready for direct JSON-RPC POST.`);
-      postEndpointUrl = remoteUrl;
-      res.resume();
-    }
+    res.on("end", () => {
+      log("Connection closed by server.");
+      process.exit(0);
+    });
   });
 
-  checkReq.on("error", (err) => {
+  sseReq.on("error", (err) => {
     if (isCheckMode) {
       log(`❌ Connection test failed: ${err.message}`);
       process.exit(1);
     }
-    log(`Connection notice: ${err.message}. Defaulting to direct POST.`);
+    log(`Connection notice: ${err.message}. Ready for direct POST.`);
     postEndpointUrl = remoteUrl;
   });
 
-  checkReq.end();
+  sseReq.end();
 
   if (isCheckMode) return;
 
-  // Listen to Claude Desktop stdin line by line and forward to remote server
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: false
-  });
-
-  rl.on("line", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
+  function dispatchPost(jsonRpcString) {
     const destUrl = new URL(postEndpointUrl || remoteUrl);
     const postLib = destUrl.protocol === "https:" ? https : http;
 
@@ -194,21 +266,41 @@ function startBridge(token) {
       let responseBody = "";
       postRes.on("data", chunk => responseBody += chunk.toString("utf-8"));
       postRes.on("end", () => {
-        if (responseBody.trim()) {
-          process.stdout.write(responseBody.trim() + "\n");
+        const body = responseBody.trim();
+        // Ignore non-JSON response strings like "Accepted"
+        if (body.startsWith("{") || body.startsWith("[")) {
+          process.stdout.write(body + "\n");
         }
       });
     });
 
     postReq.on("error", (err) => {
-      log("Error dispatching JSON-RPC request to server:", err.message);
+      log("Error sending request to server:", err.message);
     });
 
-    postReq.write(trimmed);
+    postReq.write(jsonRpcString);
     postReq.end();
+  }
+
+  // Claude Desktop stdio interface
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
   });
 
-  log("Bridge ready. Listening for Claude Desktop queries.");
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    if (!postEndpointUrl) {
+      pendingQueue.push(trimmed);
+    } else {
+      dispatchPost(trimmed);
+    }
+  });
+
+  log("Bridge active. Listening for Claude Desktop requests.");
 }
 
 const token = getToken();

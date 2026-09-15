@@ -1,16 +1,16 @@
 {
-  "name": "eoxs-marketplace",
+  "name": "raj-marketplace",
   "owner": {
-    "name": "EOXS"
+    "name": "Raj"
   },
   "plugins": [
     {
-      "name": "eoxs-intern",
-      "description": "Authenticated intern data connector for EOXS emails, calls, wiki, and implementation tasks.",
+      "name": "raj-plugins",
+      "description": "Raj's multi-connector MCP suite: Threads-wiki, Threads-OV, CEO, Ask Cruz, and Team EOXS.",
       "version": "1.0.0",
       "source": "./",
       "author": {
-        "name": "EOXS"
+        "name": "Raj"
       }
     }
   ]

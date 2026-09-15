@@ -1,17 +1,50 @@
 {
-  "name": "eoxs-intern",
-  "displayName": "EOXS Intern Data Connector",
+  "name": "raj-plugins",
+  "displayName": "Raj's Suite",
   "version": "1.0.0",
-  "description": "Authenticated intern data connector for EOXS emails, calls, wiki, and implementation tasks.",
+  "description": "Raj's multi-connector MCP suite: Threads-wiki, Threads-OV, CEO, Ask Cruz, and Team EOXS.",
   "author": {
-    "name": "EOXS"
+    "name": "Raj"
   },
   "mcpServers": {
-    "eoxs-intern": {
+    "threads-wiki": {
       "command": "node",
       "args": [
         "scripts/bridge.js",
-        "https://thread-vault-db-testing.onrender.com/zStpO9S-zb3JtCPfb2ieZhN8wYxPRIPNJsAuInnt6mY/sse"
+        "--name",
+        "threads-wiki"
+      ]
+    },
+    "threads-ov": {
+      "command": "node",
+      "args": [
+        "scripts/bridge.js",
+        "--name",
+        "threads-ov"
+      ]
+    },
+    "ceo": {
+      "command": "node",
+      "args": [
+        "scripts/bridge.js",
+        "--name",
+        "ceo"
+      ]
+    },
+    "ask-cruz": {
+      "command": "node",
+      "args": [
+        "scripts/bridge.js",
+        "--name",
+        "ask-cruz"
+      ]
+    },
+    "team-eoxs": {
+      "command": "node",
+      "args": [
+        "scripts/bridge.js",
+        "--name",
+        "team-eoxs"
       ]
     }
   }

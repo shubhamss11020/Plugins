@@ -1,83 +1,73 @@
-# EOXS Intern Plugin for Claude
+# Raj's AskCruz & Thread Vault Plugin Suite for Claude
 
-A clean, production-ready Claude Desktop plugin integrating the AskCruz / EOXS live MCP remote server and custom skill instructions.
-
----
-
-## Folder Structure
-
-```text
-Plugins/
-├── plugin.json               # Plugin metadata
-├── mcp_config.json           # Standard MCP config
-├── README.md                 # Documentation
-├── scripts/
-│   ├── bridge.js             # Claude stdio <-> Remote HTTPS/SSE bridge
-│   └── install.js            # Auto-installer script for Claude Desktop config
-└── skills/
-    └── eoxs-intern/
-        └── SKILL.md          # ⬅️ PLACE YOUR SKILL .MD FILE HERE
-```
+Configured for **Raj**, featuring 5 dedicated MCP servers and matching skills.
 
 ---
 
-## 1. Where to Add Your Skill File
+## 1. The 5 MCP Connectors & Skills
 
-Place your markdown skill file inside:
-📁 **`skills/eoxs-intern/SKILL.md`**
-
-*(Full path: `C:\Users\shubh\OneDrive\Desktop\Plugins\skills\eoxs-intern\SKILL.md`)*
-
----
-
-## 2. Claude Desktop Integration (Automatic!)
-
-**You do NOT need to manually edit Claude Desktop's config file.**
-
-Claude Desktop has already been automatically configured with:
-```json
-"eoxs-intern": {
-  "command": "node",
-  "args": [
-    "C:/Users/shubh/OneDrive/Desktop/Plugins/scripts/bridge.js",
-    "https://mcp.askcruz.com/intern/mcp"
-  ]
-}
-```
-
-If you ever move this folder or set up a new machine, you can simply run:
-```powershell
-node scripts/install.js
-```
-This will automatically update `%APPDATA%\Claude\claude_desktop_config.json` while keeping your existing MCP servers safe.
+| # | Connector ID | Name | Endpoint URL | Authentication | Skill Directory |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | `threads-wiki` | **Threads-wiki** | `https://mcp.askcruz.com/wiki/mcp` | `x-auth-token` | `skills/threads-wiki/SKILL.md` |
+| **2** | `threads-ov` | **Threads-OV** | `https://.../sse` | **Direct URL (No auth header)** | `skills/threads-ov/SKILL.md` |
+| **3** | `ceo` | **CEO** | `https://mcp.askcruz.com/ceo/mcp` | `x-auth-token` | `skills/ceo/SKILL.md` |
+| **4** | `ask-cruz` | **Ask Cruz** | `https://mcp.askcruz.com/team/mcp` | `x-auth-token` | `skills/ask-cruz/SKILL.md` |
+| **5** | `team-eoxs` | **Team EOXS** | `https://mcpeoxsteamlive.lancerdevops.me/mcp` | **Direct URL (No auth header)** | `skills/team-eoxs/SKILL.md` |
 
 ---
 
-## 3. Authentication Token
+## 2. Header & Token Configuration
 
-The bridge automatically loads your intern token from:
-📁 **`C:\Users\shubh\.eoxs\token.json`**
+Configure your URLs and tokens directly in [config.json](file:///c:/Users/shubh/OneDrive/Desktop/Plugins/config.json):
 
-File format:
 ```json
 {
-  "name": "Shubham",
-  "token": "YOUR_VALID_TOKEN"
+  "defaultHeaderName": "x-auth-token",
+  "defaultToken": "YOUR_TOKEN_HERE",
+  "servers": {
+    "threads-wiki": {
+      "name": "Threads-wiki",
+      "url": "https://mcp.askcruz.com/wiki/mcp",
+      "headerName": "x-auth-token",
+      "token": "YOUR_TOKEN_HERE"
+    },
+    "threads-ov": {
+      "name": "Threads-OV",
+      "url": "https://thread-vault-db-testing.onrender.com/.../sse",
+      "noAuth": true
+    },
+    "ceo": {
+      "name": "CEO",
+      "url": "https://mcp.askcruz.com/raj/mcp",
+      "headerName": "x-auth-token",
+      "token": "YOUR_TOKEN_HERE"
+    },
+    "ask-cruz": {
+      "name": "Ask Cruz",
+      "url": "https://mcp.askcruz.com/team/mcp",
+      "headerName": "x-auth-token",
+      "token": "YOUR_TOKEN_HERE"
+    },
+    "team-eoxs": {
+      "name": "Team EOXS",
+      "url": "https://mcpeoxsteamlive.lancerdevops.me/mcp",
+      "noAuth": true
+    }
+  }
 }
 ```
 
 > [!NOTE]
-> If your token expires or you receive a `401 Unauthorized` response, simply update the `"token"` field in `C:\Users\shubh\.eoxs\token.json` with your new token.
+> Both `threads-ov` and `team-eoxs` are configured with `"noAuth": true` so they communicate directly without sending any authentication headers.
 
 ---
 
-## 4. How to Use in Claude Desktop
+## 3. Claude Desktop Setup
 
-1. **Restart Claude Desktop:**
-   Completely exit Claude Desktop from the system tray (bottom-right of taskbar) and reopen it.
-2. **Tools Verification:**
-   Click the **hammer / tools icon** (🛠️) in any chat. You will see the EOXS tools available.
-3. **Skill Instructions in Claude:**
-   - In Claude Desktop, create a **Project** (e.g. *"EOXS Assistant"*).
-   - In the project's **Set Custom Instructions**, paste the contents of your `SKILL.md`.
-   - Now Claude will follow all skill instructions, call `get_index()` first, and enforce redaction rules!
+All 5 servers are already registered in your Claude Desktop configuration (`%APPDATA%\Claude\claude_desktop_config.json`).
+
+To install or refresh on any new machine, run:
+```powershell
+node scripts/install.js
+```
+or double-click **`setup.bat`**.

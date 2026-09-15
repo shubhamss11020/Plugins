@@ -1,0 +1,33 @@
+{
+  "defaultHeaderName": "x-auth-token",
+  "defaultToken": "YOUR_TOKEN_HERE",
+  "servers": {
+    "threads-wiki": {
+      "name": "Threads-wiki",
+      "url": "https://mcp.askcruz.com/wiki/mcp",
+      "headerName": "x-auth-token",
+      "token": "bCGNPbfoRKdt4dOFcHm8bdHfYXFDaS4058f4PVssLTk"
+    },
+    "threads-ov": {
+      "name": "Threads-OV",
+      "url": "https://claude-notes-vault.onrender.com/KIKPAQcrHhzwqKDsEHJoGoqj_5o7CsPMOI8vvwfZ9Ik/sse",
+      "noAuth": true
+    },
+    "ceo": {
+      "name": "CEO",
+      "url": "https://mcp.askcruz.com/raj/mcp",
+      "headerName": "x-auth-token",
+      "token": "wseoBrvlWiHTFDxA1JWSvN7PniggWf1l_akDmkmCXyo"
+    },
+    "ask-cruz": {
+      "name": "Ask Cruz",
+      "url": "https://askcruzmcp.lancerdevops.me/mcp-readonly",
+      "noAuth": true
+    },
+    "team-eoxs": {
+      "name": "Team EOXS",
+      "url": "https://mcpeoxsteamlive.lancerdevops.me/mcp",
+      "noAuth": true
+    }
+  }
+}
