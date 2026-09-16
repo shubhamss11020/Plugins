@@ -1,5 +1,7 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "raj-marketplace",
+  "description": "Raj's multi-connector MCP suite marketplace for Claude Desktop and Claude Code",
   "owner": {
     "name": "Raj"
   },

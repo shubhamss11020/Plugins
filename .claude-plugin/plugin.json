@@ -10,7 +10,7 @@
     "threads-wiki": {
       "command": "node",
       "args": [
-        "scripts/bridge.js",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/bridge.js",
         "--name",
         "threads-wiki"
       ]
@@ -18,7 +18,7 @@
     "threads-ov": {
       "command": "node",
       "args": [
-        "scripts/bridge.js",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/bridge.js",
         "--name",
         "threads-ov"
       ]
@@ -26,7 +26,7 @@
     "ceo": {
       "command": "node",
       "args": [
-        "scripts/bridge.js",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/bridge.js",
         "--name",
         "ceo"
       ]
@@ -34,7 +34,7 @@
     "ask-cruz": {
       "command": "node",
       "args": [
-        "scripts/bridge.js",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/bridge.js",
         "--name",
         "ask-cruz"
       ]
@@ -42,7 +42,7 @@
     "team-eoxs": {
       "command": "node",
       "args": [
-        "scripts/bridge.js",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/bridge.js",
         "--name",
         "team-eoxs"
       ]

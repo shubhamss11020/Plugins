@@ -1,11 +1,4 @@
 {
-  "name": "raj-plugins",
-  "displayName": "Raj's Suite",
-  "version": "1.0.0",
-  "description": "Raj's multi-connector MCP suite: Threads-wiki, Threads-OV, CEO, Ask Cruz, and Team EOXS.",
-  "author": {
-    "name": "Raj"
-  },
   "mcpServers": {
     "threads-wiki": {
       "command": "node",
